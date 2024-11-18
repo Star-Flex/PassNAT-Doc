@@ -2,9 +2,12 @@
 sidebar_position: 3
 ---
 
+import Tabs from "@theme/Tabs"
+import TabItem from "@theme/TabItem"
+
 # HTTPS 协议穿透
 
-> 穿透 HTTPS 协议的端口，需要在 PassNAT 控制台中配置 `HTTPS` 类型的隧道。目前版本请保持内网协议为 `HTTP`。PassNAT 会自动将请求的 `HTTPS` 协议转发到内网的 `HTTP` 协议。
+> 穿透 HTTPS 协议的端口，需要在 PassNAT 控制台中配置 `HTTPS` 类型的隧道。
 
 ### 准备
 
@@ -13,18 +16,18 @@ sidebar_position: 3
 
 ### 配置
 
-:::tip
-请注意，CA 证书和密钥需要留存在运行 PassNAT 客户端的机器上，并不是和其他 CDN 提供商一样把内容上传到控制台。
-:::
+<Tabs queryString="current">
+  <TabItem value="http" label="源站 HTTP" default>
+  :::tip
+  请注意，CA 证书和密钥需要留存在运行 PassNAT 客户端的机器上，并不是和其他 CDN 提供商一样把内容上传到控制台。
+  :::
+
+源站 HTTP 类型，原理上使用了 frpc 的原生 `https2http` 插件，将 HTTPS 请求转发到 HTTP 端口上。所以你只需要配置好 `HTTP` 类型的隧道即可。
 
 请咨询您的 CA 证书签发商，获取到 `证书` 和 `私钥` 的内容 （ 需要是 Apache 格式 ） 。然后在 PassNAT 控制台中配置 `HTTPS` 类型的隧道。
 你需要把 CA 证书下载到运行 PassNAT 客户端的机器上，然后在控制台中上传证书和私钥的**绝对路径**。
 
-### 启动隧道访问
-
-在配置好隧道后，你可以通过 `https://域名` 访问你的内网服务。
-
-### 常见问题
+#### 常见问题
 
 某些Windows 系统下可能会出现 `error unmarshaling json while decoding json...` 的相关报错，这是因为 Windows 系统下的路径分隔符为 `\` ，而 JSON 格式中 `\` 为转义字符，所以需要将路径中的 `\` 替换为 `\\` 。
 
@@ -33,3 +36,18 @@ sidebar_position: 3
 ```text
  C:\\Users\\xxxx\\Downloads\\aaa\\privkey.key
 ```
+
+  </TabItem>
+
+  <TabItem value="https" label="源站 HTTPS">
+
+:::tip
+请注意，CA 证书和密钥需要配置到内网服务上。
+:::
+
+  </TabItem>
+</Tabs>
+
+### 启动隧道访问
+
+在配置好隧道后，你可以通过 `https://域名` 访问你的内网服务。
