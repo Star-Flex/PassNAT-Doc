@@ -1,15 +1,37 @@
 import { getOssLink } from "../../src/utils/index.ts"
 import Videoplayer from "../../src/components/video-player/index.tsx"
+import pic1 from "../../public/connection/fnos/1.png"
+import pic2 from "../../public/connection/fnos/2.png"
 
 # 飞牛OS
+
+### 简介
+
+本文将演示 飞牛OS 如何利用 Docker 容器连接 PassNAT (frp) 进行内网穿透。
+
+### 飞牛 Docker 如何使用加速镜像
 
 :::tip
 特别注意，如果 Docker 镜像下载或连接错误，请尝试使用国内加速镜像。
 :::
 
-### 简介
+请复制以下加速地址
 
-本文将演示 飞牛OS 如何利用 Docker 容器连接 PassNAT (frp) 进行内网穿透。
+```shell title="（主）加速服务由 Ucloud 提供"
+uhub.service.ucloud.cn/ucpublic/frpc:latest
+```
+
+```shell title="（备）加速服务由 1ms 提供"
+docker.1ms.run/snowdreamtech/frpc:latest
+```
+
+#### 点击 Docker 容器中的本地镜像 - 添加镜像 - 添加下载链接
+
+<img src={pic1} alt="pic1" />
+
+#### 输入加速地址，用户名 和 密码请留空
+
+<img src={pic2} alt="pic2" />
 
 ### 视频版
 
