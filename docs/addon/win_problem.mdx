@@ -1,12 +1,16 @@
 import Tabs from "@theme/Tabs"
 import TabItem from "@theme/TabItem"
 
-import errpic from "../../public/addon/err_pic.webp"
-import defender from "../../public/addon/defender-pic.webp"
-import defender2 from "../../public/addon/defender-2.webp"
-import defender3 from "../../public/addon/defender-3.webp"
-import defender4 from "../../public/addon/defender-4.webp"
-import defender5 from "../../public/addon/defender-5.webp"
+import err_pic from "../../public/addon/err_pic.webp"
+import defender_gui_1 from "../../public/addon/defender_gui_1.webp"
+import defender_gui_2 from "../../public/addon/defender_gui_2.webp"
+import defender_gui_3 from "../../public/addon/defender_gui_3.webp"
+import defender_gui_4 from "../../public/addon/defender_gui_4.webp"
+import defender_gui_5 from "../../public/addon/defender_gui_5.webp"
+import huorong_1 from "../../public/addon/huorong_1.webp"
+import huorong_2 from "../../public/addon/huorong_2.webp"
+import huorong_3 from "../../public/addon/huorong_3.webp"
+import huorong_4 from "../../public/addon/huorong_4.webp"
 
 # Windows 系统上的问题
 
@@ -14,7 +18,7 @@ import defender5 from "../../public/addon/defender-5.webp"
 
 在 Windows 系统上启动官方的 PassNAT 客户端，你可能会遇到下面截图的问题：
 
-<img src={errpic} alt="errpic" />
+<img src={err_pic} alt="err_pic" />
 
 如果看到这个界面，请你 **保持冷静** ，也没有外星人会入侵地球。这并不是什么严重的问题。
 
@@ -46,22 +50,74 @@ import defender5 from "../../public/addon/defender-5.webp"
         - 直接 <a href="ms-settings:windowsdefender">点我打开</a>  Windows Defender 安全中心
         - 或者按下 `Win + I` 打开设置，选择“隐私和安全性”，然后选择“Windows 安全中心”
         - 或者在任务栏搜索框中输入“Windows Defender”，然后选择“Windows 安全中心”
-        <img src={defender}></img>
+        <img src={defender_gui_1}></img>
 
-    2. 选择“病毒和威胁防护” -> “病毒和威胁防护设置”
-        <img src={defender2}></img>
+    2. 选择 “病毒和威胁防护” -> “病毒和威胁防护设置”
+        <img src={defender_gui_2}></img>
 
-    3. 选择“排除设置或排除项”
-        <img src={defender3}></img>
+    3. 选择 “排除设置或排除项”
+        <img src={defender_gui_3}></img>
 
     4. 选择 “文件夹类型”
-        <img src={defender4}></img>
+        <img src={defender_gui_4}></img>
 
     5. 选择 PassNAT 客户端所在的文件夹
-        <img src={defender5}></img>
+        <img src={defender_gui_5}></img>
 
     6. 重新安装 PassNAT 客户端到刚才选择排除的文件夹
 
   </TabItem>
+  <TabItem value="defender-cli" label="Windows Defender CLI" default>
+        
+    1. 以管理员身份运行以下 PowerShell 脚本 (文件扩展名 `.ps1` ) 将 已安装的 PassNAT 客户端自动添加到 Windows Defender 排除文件夹
+    ```ps1
+    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+    $softwareItems = Get-ChildItem -Path $regPath
+    $passNATItem = $softwareItems | Where-Object { (Get-ItemProperty -Path $_.PSPath).DisplayName -like "*PassNAT*" }
 
+    if ($passNATItem) {
+        $displayIcon = (Get-ItemProperty -Path $passNATItem.PSPath).DisplayIcon
+        
+        if ($displayIcon) {
+            Write-Output "DisplayIcon: $displayIcon"
+            $path = $displayIcon -split ',' | Select-Object -First 1
+            $folderPath = [System.IO.Path]::GetDirectoryName($path)
+            
+            if (Test-Path $folderPath) {
+                Write-Output "正在将 $folderPath 添加到 Windows Defender 白名单..."
+                Add-MpPreference -ExclusionPath $folderPath
+                Write-Output "路径已添加到白名单: $folderPath"
+            } else {
+                Write-Output "路径不存在: $folderPath"
+            }
+        } else {
+            Write-Output "未找到 DisplayIcon。"
+        }
+    } else {
+        Write-Output "在卸载注册表中未找到 PassNAT。"
+    }
+    ```
+  </TabItem>
+  <TabItem value="huorong" label="火绒安全" default>
+
+    1. 打开 火绒安全软件
+
+    2. 选择 右上角展开 “菜单”
+        <img src={huorong_1}></img>
+
+    3. 选择 “信任区”，进入安全项管理
+        <img src={huorong_2}></img>
+
+    4. 选择 “添加”，添加信任项
+        <img src={huorong_3}></img>
+
+    5. 根据图示，将 PassNAT 客户端所在的文件夹添加至信任区
+
+        tip： 若未创建 PassNAT 客户端所在目录，该条信任内容则无法被添加
+
+        <img src={huorong_4}></img>
+
+    6. 重新安装 PassNAT 客户端到刚才选择信任的文件夹
+
+  </TabItem>
 </Tabs>
