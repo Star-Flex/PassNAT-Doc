@@ -35,17 +35,13 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
+          showLastUpdateAuthor: true,
+          showLastUpdateTime: true,
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl: "https://github.com/Star-Flex/passnat-doc/tree/main"
         },
-        blog: {
-          showReadingTime: true,
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/"
-        },
+        blog: false,
         theme: {
           customCss: "./src/css/custom.css"
         },
