@@ -7,7 +7,6 @@ const config: Config = {
   tagline: "你想知道的都在这里",
   favicon: "img/favicon.ico",
   staticDirectories: ["static", "public"],
-
   // Set the production url of your site here
   url: "https://doc.passnat.com",
   // Set the /<baseUrl>/ pathname under which your site is served
@@ -21,6 +20,11 @@ const config: Config = {
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
+
+  future: {
+    v4: true,
+    experimental_faster: true
+  },
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you

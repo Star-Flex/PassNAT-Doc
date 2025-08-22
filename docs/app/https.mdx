@@ -4,6 +4,7 @@ sidebar_position: 3
 
 import Tabs from "@theme/Tabs"
 import TabItem from "@theme/TabItem"
+import pic1 from "/ssl/1.webp"
 
 # HTTPS 协议穿透
 
@@ -11,8 +12,27 @@ import TabItem from "@theme/TabItem"
 
 ### 准备
 
-- 你可以使用自定义域名，也可以使用 PassNAT 提供的域名。但目前版本中，你如果需要使用 PassNAT 提供的默认域名，申请 SSL 证书时你需要通过工单联系客服人员添加 SSL DNS 验证用的解析。
+- 你可以使用自定义域名，也可以使用 PassNAT 提供的域名。但目前版本中，你如果需要使用 PassNAT 提供的默认域名去申请 SSL 证书，你需要通过工单联系客服人员添加 SSL DNS 验证用的解析。
 - 如果你用的是自定义域名，请按照 SSL CA 证书签发商的要求配置好解析并成功拿到 SSL 证书。
+
+### 证书
+
+下方教程以使用 PassNAT 提供的域名为例，使用自定义域名的用户请参考 CA 证书签发商的要求。
+
+在 CA 证书服务商填入所需要申请的 SSL 子域名或二级泛域名，CA 证书服务商会给出对应的域名校验解析。如下图所示：
+
+<img src={pic1} alt="mc_bedrock_1" />
+
+拿到 DNS 解析记录之后，需要在 PassNAT 控制台开启新工单。内容模版可参考
+
+```text
+我需要添加一条域名所有权校验所使用的解析
+主机记录: _acme-challenge.s.
+类型: CNAME
+记录值: xxxx
+```
+
+在收到工单回复添加成功后可在 CA 证书服务商点击校验，同时会下发 SSL 证书
 
 ### 配置
 
@@ -29,7 +49,7 @@ import TabItem from "@theme/TabItem"
 
 #### 常见问题
 
-某些Windows 系统下可能会出现 `error unmarshaling json while decoding json...` 的相关报错，这是因为 Windows 系统下的路径分隔符为 `\` ，而 JSON 格式中 `\` 为转义字符，所以需要将路径中的 `\` 替换为 `\\` 。
+某些 Windows 系统下 log 日志可能会出现 `error unmarshaling json while decoding json...` 的相关报错，这是因为 Windows 系统下的路径分隔符为 `\` ，而 JSON 格式中 `\` 为转义字符，所以需要将路径中的 `\` 替换为 `\\` 。
 
 比如，你可以把路径修改成
 
@@ -53,3 +73,5 @@ import TabItem from "@theme/TabItem"
 ### 启动隧道访问
 
 在配置好隧道后，你可以通过 `https://域名` 访问你的内网服务。
+
+特别注意，一定是 `https://` 开头的链接。如果直接访问域名是默认使用的 `http://` 协议，可能会导致访问失败。
