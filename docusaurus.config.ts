@@ -3,6 +3,27 @@ import type { Config } from "@docusaurus/types"
 import type * as Preset from "@docusaurus/preset-classic"
 
 const config: Config = {
+  plugins: [
+    function fixPlyrEsmPlugin() {
+      return {
+        name: "fix-plyr-esm",
+        configureWebpack() {
+          return {
+            module: {
+              rules: [
+                {
+                  test: /\.m?js$/,
+                  resolve: {
+                    fullySpecified: false
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
   title: "PassNAT 文档中心",
   tagline: "你想知道的都在这里",
   favicon: "img/favicon.ico",
@@ -19,7 +40,12 @@ const config: Config = {
   projectName: "passnat-doc", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: "warn"
+    }
+  },
 
   future: {
     v4: true,
