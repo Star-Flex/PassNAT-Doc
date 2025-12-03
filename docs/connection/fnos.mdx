@@ -2,14 +2,34 @@ import { getOssLink } from "../../src/utils/index.ts"
 import Videoplayer from "../../src/components/video-player/index.tsx"
 import pic1 from "/connection/fnos/1.png"
 import pic2 from "/connection/fnos/2.png"
+import pic3 from "/connection/fnos/1.webp"
+import pic4 from "/connection/fnos/2.webp"
 
 # 飞牛OS
 
 ### 简介
 
-本文将演示 飞牛OS 如何利用 Docker 容器连接 PassNAT (frp) 进行内网穿透。
+本文将演示 飞牛OS 如何利用 PassNAT 官方插件 PassNAT (frp) 进行内网穿透。
 
-### 飞牛 Docker 如何使用加速镜像
+## 插件下载
+
+- [PassNAT 官方插件（🌟推荐）](https://bucket.passnat.com/bucket-passnat/client/fnos/PassNAT.fpk)
+
+## 插件安装
+
+点击 飞牛OS 桌面上的 “应用中心” 图标 进入 飞牛应用中心界面，点击左下角手动安装 按钮，选择刚才下载的 PassNAT.fpk 文件进行安装
+
+<img src={pic3} alt="pic3" />
+
+安装完成后，点击 飞牛OS 桌面上的 “PassNAT” 图标 进入 PassNAT 插件界面
+
+页面提示输入 SecretKey，请点击 [获取网站 SecretKey 密钥](../site/sk)
+
+确认后即可使用此插件
+
+<img src={pic4} alt="pic4" />
+
+### 飞牛 Docker 使用方法
 
 :::tip
 特别注意，如果 Docker 镜像下载或连接错误，请尝试使用国内加速镜像。
