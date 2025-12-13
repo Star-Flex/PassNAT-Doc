@@ -1,0 +1,120 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Setup ossutil
+        run: |
+          curl https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+
+      - name: Deploy to Aliyun OSS
+        run: |
+          ossutil sync ./build/ oss://${{ secrets.ALIYUN_OSS_BUCKET }}/ --force --delete \
+            -i ${{ secrets.ALIYUN_ACCESS_KEY_ID }} \
+            -k ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }} \
+            -e oss-cn-hangzhou.aliyuncs.com
+
+          echo "Deploy completed successfully!"
+
+      - name: Refresh ESA CDN Cache
+        run: |
+          # 安装阿里云 CLI
+          /bin/bash -c "$(curl -fsSL https://aliyuncli.alicdn.com/install.sh)"
+
+          # 配置 aliyun CLI
+          aliyun configure set \
+            --profile AkProfile \
+            --mode AK \
+            --access-key-id ${{ secrets.ALIYUN_ACCESS_KEY_ID }} \
+            --access-key-secret ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }} \
+            --region cn-hangzhou
+
+          # 刷新 ESA CDN 缓存
+          aliyun esa PurgeCaches \
+            --region cn-hangzhou \
+            --Content '{"CacheKeys":[{}],"Hostnames":["${{ secrets.ALIYUN_ESA_DOMAIN }}"]}' \
+            --SiteId ${{ secrets.ALIYUN_ESA_SITE_ID }} \
+            --Type hostname
+
+          echo "ESA CDN cache refreshed!"
+
+      - name: Send Success Notification to Feishu
+        if: success()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{
+            "msg_type": "post",
+            "content": {
+              "post": {
+                "zh_cn": {
+                  "title": "${{ github.repository }} 文档部署成功 ✅",
+                  "content": [
+                    [{
+                      "tag": "text",
+                      "text": "分支: ${{ github.ref_name }}"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "提交: ${{ github.sha }}"
+                    }],
+                    [{
+                      "tag": "at",
+                      "user_id": "all"
+                    }]
+                  ]
+                }
+              }
+            }
+          }' \
+          ${{ secrets.FEISHU_WEBHOOK_URL }}
+
+      - name: Send Failure Notification to Feishu
+        if: failure()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d '{
+            "msg_type": "post",
+            "content": {
+              "post": {
+                "zh_cn": {
+                  "title": "${{ github.repository }} 文档部署失败 ❌",
+                  "content": [
+                    [{
+                      "tag": "text",
+                      "text": "分支: ${{ github.ref_name }}"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "提交: ${{ github.sha }}"
+                    }],
+                    [{
+                      "tag": "at",
+                      "user_id": "all"
+                    }]
+                  ]
+                }
+              }
+            }
+          }' \
+          ${{ secrets.FEISHU_WEBHOOK_URL }}
