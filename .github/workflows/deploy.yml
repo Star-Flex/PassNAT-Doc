@@ -38,6 +38,7 @@ jobs:
           echo "Deploy completed successfully!"
 
       - name: Refresh ESA CDN Cache
+        continue-on-error: true
         run: |
           # 安装阿里云 CLI
           /bin/bash -c "$(curl -fsSL https://aliyuncli.alicdn.com/install.sh)"
