@@ -24,26 +24,55 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Setup ossutil
+      - name: Generate file list for ESA preheat
+        id: file-list
         run: |
-          curl https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          # 生成文件列表（相对路径）
+          cd build
+          find . -type f | sed 's|^\./||' > ../file-list.txt
+          cd ..
+          echo "Generated $(wc -l < file-list.txt) files"
+          # 保存文件数量到输出
+          echo "file_count=$(wc -l < file-list.txt)" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Aliyun OSS
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        id: dockerhub-login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to Aliyun Container Registry
+        id: aliyun-login
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALIYUN_CR_USERNAME }}
+          password: ${{ secrets.ALIYUN_CR_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        id: docker-build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            registry.cn-hangzhou.aliyuncs.com/passnat/docs:${{ github.sha }}
+            registry.cn-hangzhou.aliyuncs.com/passnat/docs:latest
+
+      - name: Trigger Deploy Webhook
+        id: deploy-webhook
         run: |
-          ossutil sync ./build/ oss://${{ secrets.ALIYUN_OSS_BUCKET }}/ --force --delete \
-            -i ${{ secrets.ALIYUN_ACCESS_KEY_ID }} \
-            -k ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }} \
-            -e oss-cn-hangzhou.aliyuncs.com
+          curl -f -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}/v1/update" \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}"
+          echo "Deploy webhook triggered!"
 
-          echo "Deploy completed successfully!"
-
-      - name: Refresh ESA CDN Cache
-        continue-on-error: true
+      - name: Setup Aliyun CLI
         run: |
-          # 安装阿里云 CLI
           /bin/bash -c "$(curl -fsSL https://aliyuncli.alicdn.com/install.sh)"
-
-          # 配置 aliyun CLI
           aliyun configure set \
             --profile AkProfile \
             --mode AK \
@@ -51,33 +80,169 @@ jobs:
             --access-key-secret ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }} \
             --region cn-hangzhou
 
-          # 刷新 ESA CDN 缓存
+      - name: Refresh ESA CDN Cache
+        id: esa-refresh
+        continue-on-error: true
+        run: |
           aliyun esa PurgeCaches \
             --region cn-hangzhou \
-            --Content '{"CacheKeys":[{}],"Hostnames":["${{ secrets.ALIYUN_ESA_DOMAIN }}"]}' \
+            --Content '{"CacheKeys":[{}],"Hostnames":["doc.passnat.com"]}' \
             --SiteId ${{ secrets.ALIYUN_ESA_SITE_ID }} \
             --Type hostname
-
           echo "ESA CDN cache refreshed!"
+
+      - name: Preheat ESA CDN Cache
+        id: esa-preheat
+        continue-on-error: true
+        run: |
+          HOSTNAME="doc.passnat.com"
+          SITE_ID="${{ secrets.ALIYUN_ESA_SITE_ID }}"
+
+          # 读取文件列表并生成 URL 数组
+          URLS=""
+          while IFS= read -r file; do
+            if [ -n "$URLS" ]; then
+              URLS="$URLS,\"https://$HOSTNAME/$file\""
+            else
+              URLS="\"https://$HOSTNAME/$file\""
+            fi
+          done < file-list.txt
+
+          # ESA 预热有数量限制，分批处理（每批最多 100 个）
+          BATCH_SIZE=100
+          TOTAL=$(wc -l < file-list.txt)
+          BATCHES=$(( (TOTAL + BATCH_SIZE - 1) / BATCH_SIZE ))
+
+          echo "Total files: $TOTAL, Batches: $BATCHES"
+
+          SUCCESS=0
+          FAILED=0
+
+          for i in $(seq 0 $((BATCHES - 1))); do
+            START=$((i * BATCH_SIZE + 1))
+            END=$(((i + 1) * BATCH_SIZE))
+
+            # 提取当前批次的文件
+            BATCH_URLS=""
+            sed -n "${START},${END}p" file-list.txt | while IFS= read -r file; do
+              if [ -n "$BATCH_URLS" ]; then
+                BATCH_URLS="$BATCH_URLS,\"https://$HOSTNAME/$file\""
+              else
+                BATCH_URLS="\"https://$HOSTNAME/$file\""
+              fi
+              echo "$BATCH_URLS" > /tmp/batch_urls.txt
+            done
+
+            BATCH_URLS=$(cat /tmp/batch_urls.txt 2>/dev/null || echo "")
+
+            if [ -n "$BATCH_URLS" ]; then
+              echo "Preheating batch $((i + 1))/$BATCHES..."
+              if aliyun esa PreloadCaches \
+                --region cn-hangzhou \
+                --SiteId $SITE_ID \
+                --Content "[$BATCH_URLS]"; then
+                SUCCESS=$((SUCCESS + 1))
+              else
+                FAILED=$((FAILED + 1))
+              fi
+            fi
+          done
+
+          echo "Preheat completed: $SUCCESS batches succeeded, $FAILED batches failed"
+          echo "success_batches=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "failed_batches=$FAILED" >> $GITHUB_OUTPUT
 
       - name: Send Success Notification to Feishu
         if: success()
         run: |
+          ESA_REFRESH_STATUS="${{ steps.esa-refresh.outcome }}"
+          ESA_PREHEAT_STATUS="${{ steps.esa-preheat.outcome }}"
+
+          if [ "$ESA_REFRESH_STATUS" = "success" ]; then
+            ESA_REFRESH_EMOJI="✅"
+            ESA_REFRESH_TEXT="成功"
+          else
+            ESA_REFRESH_EMOJI="❌"
+            ESA_REFRESH_TEXT="失败"
+          fi
+
+          if [ "$ESA_PREHEAT_STATUS" = "success" ]; then
+            ESA_PREHEAT_EMOJI="✅"
+            ESA_PREHEAT_TEXT="成功"
+          else
+            ESA_PREHEAT_EMOJI="❌"
+            ESA_PREHEAT_TEXT="失败"
+          fi
+
+          FILE_COUNT="${{ steps.file-list.outputs.file_count }}"
+
           curl -X POST -H "Content-Type: application/json" \
           -d '{
             "msg_type": "post",
             "content": {
               "post": {
                 "zh_cn": {
-                  "title": "${{ github.repository }} 文档部署成功 ✅",
+                  "title": "📦 ${{ github.repository }} 文档部署成功",
                   "content": [
                     [{
                       "tag": "text",
-                      "text": "分支: ${{ github.ref_name }}"
+                      "text": "🔀 分支: ${{ github.ref_name }}"
                     }],
                     [{
                       "tag": "text",
-                      "text": "提交: ${{ github.sha }}"
+                      "text": "📝 提交: ${{ github.sha }}"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "👤 提交者: ${{ github.actor }}"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "━━━━━━━━━━━━━━━━━━━━━━"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ 代码检出: 成功"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ 依赖安装: 成功"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ 项目构建: 成功 ('"$FILE_COUNT"' 个文件)"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ Docker Hub 登录: 成功"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ 阿里云镜像仓库登录: 成功"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ Docker 镜像构建推送: 成功"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "✅ 触发部署 Webhook: 成功"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "'"$ESA_REFRESH_EMOJI"' 刷新 ESA 缓存: '"$ESA_REFRESH_TEXT"'"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "'"$ESA_PREHEAT_EMOJI"' ESA 缓存预热: '"$ESA_PREHEAT_TEXT"'"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "━━━━━━━━━━━━━━━━━━━━━━"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "🐳 镜像地址: registry.cn-hangzhou.aliyuncs.com/passnat/docs:${{ github.sha }}"
                     }],
                     [{
                       "tag": "at",
@@ -99,15 +264,27 @@ jobs:
             "content": {
               "post": {
                 "zh_cn": {
-                  "title": "${{ github.repository }} 文档部署失败 ❌",
+                  "title": "🚨 ${{ github.repository }} 文档部署失败",
                   "content": [
                     [{
                       "tag": "text",
-                      "text": "分支: ${{ github.ref_name }}"
+                      "text": "🔀 分支: ${{ github.ref_name }}"
                     }],
                     [{
                       "tag": "text",
-                      "text": "提交: ${{ github.sha }}"
+                      "text": "📝 提交: ${{ github.sha }}"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "👤 提交者: ${{ github.actor }}"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "━━━━━━━━━━━━━━━━━━━━━━"
+                    }],
+                    [{
+                      "tag": "text",
+                      "text": "🔗 查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                     }],
                     [{
                       "tag": "at",
