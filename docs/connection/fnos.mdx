@@ -4,18 +4,44 @@ import pic1 from "/connection/fnos/1.png"
 import pic2 from "/connection/fnos/2.png"
 import pic3 from "/connection/fnos/1.webp"
 import pic4 from "/connection/fnos/2.webp"
+import pic5 from "/connection/fnos/5.webp"
+import pic7 from "/connection/fnos/7.webp"
+import pic8 from "/connection/fnos/8.webp"
 
 # 飞牛OS
 
 ### 简介
 
-本文将演示 飞牛OS 如何利用 PassNAT 官方插件 PassNAT (frp) 进行内网穿透。
+本文将演示 飞牛OS 如何利用 PassNAT 官方插件 PassNAT 进行内网穿透。
 
-## 插件下载
+PassNAT 官方客户端现已集成在 飞牛OS 应用商店中，您可以直接下载安装使用。
+
+## 应用商店版
+
+打开飞牛OS 应用商店，搜索 “PassNAT” ，找到 PassNAT 插件，点击安装
+
+<img src={pic5} alt="pic5" />
+
+安装完成后，点击 飞牛OS 桌面上的 “PassNAT” 图标 进入 PassNAT 插件界面
+
+- 如果已生成 SecretKey，请直点击接输入 SecretKey 进行登录
+- 如果未生成可以直接点击我已有账号使用 账号密码 进行登录
+
+<img src={pic8} alt="pic8" />
+
+登录后请点击隧道 - 新增隧道 创建新隧道以使用 PassNAT 相关服务
+
+<img src={pic7} alt="pic7" />
+
+## 应用商店离线版
+
+如果无法链接应用商店，可以通过以下方法离线安装 PassNAT 插件。
+
+### 插件下载
 
 - [PassNAT 官方插件（🌟推荐）](https://bucket.passnat.com/bucket-passnat/client/fnos/PassNAT.fpk)
 
-## 插件安装
+### 插件安装
 
 点击 飞牛OS 桌面上的 “应用中心” 图标 进入 飞牛应用中心界面，点击左下角手动安装 按钮，选择刚才下载的 PassNAT.fpk 文件进行安装
 
@@ -29,7 +55,7 @@ import pic4 from "/connection/fnos/2.webp"
 
 <img src={pic4} alt="pic4" />
 
-### 飞牛 Docker 使用方法
+## Docker 版使用方法
 
 :::tip
 特别注意，如果 Docker 镜像下载或连接错误，请尝试使用国内加速镜像。
