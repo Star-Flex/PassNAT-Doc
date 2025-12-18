@@ -5,6 +5,7 @@ sidebar_position: 3
 import Tabs from "@theme/Tabs"
 import TabItem from "@theme/TabItem"
 import pic1 from "/ssl/1.webp"
+import pic2 from "/ssl/2.webp"
 
 # HTTPS 协议穿透
 
@@ -21,18 +22,15 @@ import pic1 from "/ssl/1.webp"
 
 在 CA 证书服务商填入所需要申请的 SSL 子域名或二级泛域名，CA 证书服务商会给出对应的域名校验解析。如下图所示：
 
-<img src={pic1} alt="mc_bedrock_1" />
+> 请注意，当前版本中仅支持 TXT 方式的 DNS 解析验证。
 
-拿到 DNS 解析记录之后，需要在 PassNAT 控制台开启新工单。内容模版可参考
+<img src={pic1} alt="pic1" />
 
-```text
-我需要添加一条域名所有权校验所使用的解析
-主机记录: _acme-challenge.s.
-类型: CNAME
-记录值: xxxx
-```
+拿到 DNS 解析记录之后，请前往隧道管理-域名管理，点击对应根域名的验证DNS 按钮，添加对应的解析记录，如下图所示：
 
-在收到工单回复添加成功后可在 CA 证书服务商点击校验，同时会下发 SSL 证书
+<img src={pic2} alt="mc_bedrock_1" />
+
+请注意，添加后请尽快完成所有权验证。
 
 ### 配置
 
